@@ -14,4 +14,4 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "proxy-panel"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "6c89686c-97cc-4ea5-a053-7e6acd5b9051"
