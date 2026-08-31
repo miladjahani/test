@@ -22,6 +22,7 @@ export default function WorkersPage() {
   const [selectedToken, setSelectedToken] = useState('')
   const [proxyIP, setProxyIP] = useState('')
   const [adminPass, setAdminPass] = useState('')
+  const [workerSource, setWorkerSource] = useState('edgetunnel')
 
   // Token form
   const [showTokenForm, setShowTokenForm] = useState(false)
@@ -53,6 +54,7 @@ export default function WorkersPage() {
         cf_token_id: selectedToken,
         proxyip: proxyIP || undefined,
         admin_password: adminPass || undefined,
+        worker_source: workerSource,
       })
       setDeployLog('✅ استقرار با موفقیت آغاز شد!')
       setTimeout(() => {
@@ -242,6 +244,13 @@ export default function WorkersPage() {
                 <div>
                   <label className="label">نام ورکر (انگلیسی، بدون فاصله)</label>
                   <input value={workerName} onChange={e => setWorkerName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className="input" placeholder="my-proxy" required pattern="[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?" />
+                </div>
+                <div>
+                  <label className="label">منبع ورکر</label>
+                  <select value={workerSource} onChange={e => setWorkerSource(e.target.value)} className="input">
+                    <option value="edgetunnel">ادج‌تونل (اصلی)</option>
+                    <option value="proxypanel">پنل پروکسی (ترجمه شده + مدیریت زیرمجموعه)</option>
+                  </select>
                 </div>
                 <div>
                   <label className="label">توکن Cloudflare</label>

@@ -50,13 +50,28 @@ async function logActivity(env: Env, userId: string, action: string, entityType:
 
 // ── Deploy Worker via CF API ────────────────────────────────────────────────
 const API_BASE = 'https://api.cloudflare.com/client/v4'
-const WORKER_SOURCE_URL = 'https://raw.githubusercontent.com/cmliu/edgetunnel/main/_worker.js'
+
+// Worker sources - like miliconfigpro
+const WORKER_SOURCES: Record<string, { url: string; label: string; kvBinding: string; configKey: string }> = {
+  edgetunnel: {
+    url: 'https://raw.githubusercontent.com/cmliu/edgetunnel/main/_worker.js',
+    label: 'edgetunnel (original)',
+    kvBinding: 'KV',
+    configKey: 'config.json',
+  },
+  proxypanel: {
+    url: '', // Will use bundled source
+    label: 'ProxyPanel (translated + sub-users)',
+    kvBinding: 'KV',
+    configKey: 'config.json',
+  },
+}
 
 async function runDeployment(env: Env, job: {
   deployment_id: string; worker_name: string; cf_token: string; uuid: string;
-  proxyip?: string; admin_password?: string; origin: string;
+  proxyip?: string; admin_password?: string; origin: string; worker_source?: string;
 }) {
-  const { deployment_id, worker_name, cf_token, uuid, proxyip, admin_password, origin } = job
+  const { deployment_id, worker_name, cf_token, uuid, proxyip, admin_password, origin, worker_source } = job
   const headers = { Authorization: `Bearer ${cf_token}` }
   
   const appendLog = async (line: string) => {
@@ -83,11 +98,29 @@ async function runDeployment(env: Env, job: {
     // Fetch worker source
     await appendLog('fetching worker source...')
     let workerCode = ''
-    for (const url of [WORKER_SOURCE_URL]) {
+    const source = WORKER_SOURCES[worker_source || 'edgetunnel'] ?? WORKER_SOURCES.edgetunnel
+    
+    // For proxypanel source, try fetching from the panel's own domain
+    if (worker_source === 'proxypanel') {
       try {
-        const resp = await fetch(url)
-        if (resp.ok) { workerCode = await resp.text(); break }
+        const resp = await fetch(`${origin}/worker.js`)
+        if (resp.ok) workerCode = await resp.text()
       } catch {}
+      // Fallback to GitHub if not found locally
+      if (!workerCode) {
+        try {
+          const resp = await fetch('https://raw.githubusercontent.com/cmliu/edgetunnel/main/_worker.js')
+          if (resp.ok) workerCode = await resp.text()
+        } catch {}
+      }
+    } else {
+      // Fetch from configured URL
+      for (const url of [source.url, ...(source.url ? [] : [])]) {
+        try {
+          const resp = await fetch(url)
+          if (resp.ok) { workerCode = await resp.text(); break }
+        } catch {}
+      }
     }
     if (!workerCode) return await fail('failed to fetch worker source')
     await appendLog(`✓ source fetched (${workerCode.length} bytes)`)
@@ -210,7 +243,7 @@ export default {
         return json({ data: r.results.map((d: Record<string,unknown>) => ({ ...d, config: safeJsonParse(String(d.config || '{}'), {}) })) })
       }
       if (method === 'POST') {
-        const body = await request.json() as { name?: string; uuid?: string; cf_token_id?: string; proxyip?: string; admin_password?: string; method?: string }
+        const body = await request.json() as { name?: string; uuid?: string; cf_token_id?: string; proxyip?: string; admin_password?: string; method?: string; worker_source?: string }
         const name = (body.name ?? '').trim().toLowerCase()
         const uuid = (body.uuid ?? '').trim()
         if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(name)) return apiError('نام ورکر نامعتبر است')
@@ -222,7 +255,7 @@ export default {
         await env.DB.prepare("INSERT INTO deployments (id, user_id, name, status, uuid, method, cf_token_row_id, created_at, updated_at) VALUES (?, ?, ?, 'deploying', ?, ?, ?, ?, ?)").bind(id, user.id, name, uuid, body.method || 'workers', tokenRow.id, nowIso(), nowIso()).run()
         await logActivity(env, user.id, 'deployment_created', 'deployment', name)
 
-        ctx.waitUntil(runDeployment(env, { deployment_id: id, worker_name: name, cf_token: tokenRow.token, uuid, proxyip: body.proxyip, admin_password: body.admin_password, origin: url.origin }))
+        ctx.waitUntil(runDeployment(env, { deployment_id: id, worker_name: name, cf_token: tokenRow.token, uuid, proxyip: body.proxyip, admin_password: body.admin_password, origin: url.origin, worker_source: body.worker_source || 'edgetunnel' }))
 
         const row = await env.DB.prepare('SELECT * FROM deployments WHERE id = ?').bind(id).first()
         return json({ data: row }, 201)
