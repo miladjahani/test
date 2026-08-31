@@ -4,23 +4,72 @@
 
 @layer base {
   * { @apply border-gray-800; }
-  body { @apply bg-gray-950 text-gray-100 antialiased; }
+  body { @apply bg-gray-950 text-gray-100 antialiased; font-family: 'Vazirmatn', sans-serif; }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { @apply bg-gray-900; }
   ::-webkit-scrollbar-thumb { @apply bg-gray-700 rounded-full; }
 }
 
 @layer components {
-  .card { @apply bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-2xl p-6; }
-  .btn-primary { @apply bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 active:scale-95; }
-  .btn-secondary { @apply bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-xl font-medium transition-all duration-200 active:scale-95; }
-  .btn-danger { @apply bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 px-4 py-2 rounded-xl font-medium transition-all duration-200; }
-  .input { @apply bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-2.5 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all w-full; }
-  .label { @apply text-sm font-medium text-gray-400 mb-1.5 block; }
-  .badge { @apply text-xs px-2.5 py-0.5 rounded-full font-medium; }
+  /* ── Cards ──────────────────────────────────────────────────────────── */
+  .card { @apply bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-2xl p-4 sm:p-6; }
+  .card-hover { @apply card hover:border-brand-500/50 transition-all duration-200; }
+
+  /* ── Buttons ────────────────────────────────────────────────────────── */
+  .btn { @apply px-4 py-2.5 rounded-xl font-medium transition-all duration-200 active:scale-95 text-sm sm:text-base; }
+  .btn-primary { @apply btn bg-brand-600 hover:bg-brand-500 text-white; }
+  .btn-secondary { @apply btn bg-gray-800 hover:bg-gray-700 text-gray-200; }
+  .btn-danger { @apply btn bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30; }
+  .btn-sm { @apply px-3 py-1.5 text-xs rounded-lg; }
+  .btn-icon { @apply p-2 rounded-xl transition-all duration-200 active:scale-95; }
+
+  /* ── Forms ──────────────────────────────────────────────────────────── */
+  .input { @apply bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-2.5 sm:py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all w-full text-sm sm:text-base; }
+  .label { @apply text-xs sm:text-sm font-medium text-gray-400 mb-1.5 block; }
+  .select { @apply input appearance-none; background-repeat: no-repeat; background-position: left 0.75rem center; background-size: 1rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E"); }
+
+  /* ── Badges ─────────────────────────────────────────────────────────── */
+  .badge { @apply text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1; }
   .badge-green { @apply badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30; }
   .badge-yellow { @apply badge bg-amber-500/20 text-amber-400 border border-amber-500/30; }
   .badge-red { @apply badge bg-red-500/20 text-red-400 border border-red-500/30; }
   .badge-blue { @apply badge bg-blue-500/20 text-blue-400 border border-blue-500/30; }
+
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  .page-container { @apply min-h-screen p-4 sm:p-6 max-w-7xl mx-auto; }
+  .page-header { @apply flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8; }
+  .page-title { @apply text-2xl sm:text-3xl font-bold; }
+  .page-subtitle { @apply text-sm sm:text-base text-gray-500 mt-1; }
+  .grid-1 { @apply grid grid-cols-1 gap-4; }
+  .grid-2 { @apply grid grid-cols-1 sm:grid-cols-2 gap-4; }
+  .grid-3 { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4; }
+  .grid-4 { @apply grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4; }
+
+  /* ── Effects ────────────────────────────────────────────────────────── */
   .glow { @apply shadow-[0_0_30px_-5px_rgba(99,102,241,0.3)]; }
+  .glow-sm { @apply shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]; }
+
+  /* ── Mobile Menu ────────────────────────────────────────────────────── */
+  .mobile-menu { @apply fixed inset-0 z-50 bg-black/60 backdrop-blur-sm sm:hidden; }
+  .mobile-menu-content { @apply absolute right-0 top-0 h-full w-72 bg-gray-900 border-l border-gray-800 p-6 shadow-xl; }
+
+  /* ── Modal ──────────────────────────────────────────────────────────── */
+  .modal-overlay { @apply fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4; }
+  .modal-content { @apply card w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl rounded-b-none max-h-[90vh] overflow-y-auto; }
+
+  /* ── Stat Card ──────────────────────────────────────────────────────── */
+  .stat-card { @apply card flex items-center gap-3; }
+  .stat-icon { @apply w-10 h-10 rounded-xl flex items-center justify-center shrink-0; }
+  .stat-value { @apply text-xl sm:text-2xl font-bold; }
+  .stat-label { @apply text-[10px] sm:text-xs text-gray-500; }
+
+  /* ── Worker Card ────────────────────────────────────────────────────── */
+  .worker-url { @apply text-xs text-gray-500 font-mono truncate; }
+  .sub-link { @apply flex items-center gap-2 bg-gray-800/50 rounded-lg px-3 py-2; }
+  .sub-link code { @apply text-[10px] sm:text-xs text-brand-300 flex-1 truncate font-mono; }
+
+  /* ── Member Card ────────────────────────────────────────────────────── */
+  .member-stat { @apply bg-gray-800/50 rounded-lg px-2 sm:px-3 py-2; }
+  .member-stat-label { @apply text-[10px] sm:text-xs text-gray-500 flex items-center gap-1; }
+  .member-stat-value { @apply text-xs sm:text-sm font-medium; }
 }
