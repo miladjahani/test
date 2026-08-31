@@ -1,10 +1,10 @@
-name = "proxy-panel"
+name = "test"
 main = "worker/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 Database binding
-[[d1_databases]]
-binding = "DB"
-database_name = "proxy-panel"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+# D1 Database binding (uncomment after creating D1)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "proxy-panel"
+# database_id = "YOUR_D1_DATABASE_ID"
