@@ -1,3 +1,17 @@
 name = "test"
+main = "worker/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
+
+# Serve frontend static files from dist/
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "single-page-application"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "proxy-panel"
+database_id = "YOUR_D1_DATABASE_ID"
