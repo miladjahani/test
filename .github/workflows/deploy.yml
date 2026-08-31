@@ -94,11 +94,8 @@ jobs:
           
           echo "D1_DATABASE_ID=$DB_ID" >> $GITHUB_ENV
           
-          # Update wrangler.toml with real D1 ID
-          sed -i "s|# database_id = \"YOUR_D1_DATABASE_ID\"|database_id = \"$DB_ID\"|" wrangler.toml
-          sed -i "s|# database_name = \"proxy-panel\"|database_name = \"proxy-panel\"|" wrangler.toml
-          sed -i "s|# binding = \"DB\"|binding = \"DB\"|" wrangler.toml
-          sed -i "s|# \\[\\[d1_databases\\]\\]|[[d1_databases]]|" wrangler.toml
+          # Update worker wrangler config with real D1 ID
+          sed -i "s/YOUR_D1_DATABASE_ID/$DB_ID/" wrangler.worker.toml
 
       - name: Apply D1 Schema
         env:
@@ -106,7 +103,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           echo "Applying schema to D1..."
-          npx wrangler d1 execute proxy-panel --remote --file=d1/schema.sql --yes
+          npx wrangler d1 execute proxy-panel --remote --file=d1/schema.sql --yes --config wrangler.worker.toml
 
       - name: Deploy Worker
         env:
@@ -114,7 +111,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           echo "Deploying worker..."
-          npx wrangler deploy --yes
+          npx wrangler deploy --yes --config wrangler.worker.toml
 
       - name: Summary
         run: |
@@ -124,5 +121,5 @@ jobs:
           echo "- URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Backend (CF Worker)" >> $GITHUB_STEP_SUMMARY
-          echo "- Worker: ${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Worker: proxy-panel-api" >> $GITHUB_STEP_SUMMARY
           echo "- D1 Database: ${{ env.D1_DATABASE_ID }}" >> $GITHUB_STEP_SUMMARY
