@@ -67,18 +67,39 @@ async function runDeployment(env: Env, job: { deployment_id: string; worker_name
     await appendLog(`✓ source (${code.length} bytes)`);
 
     await appendLog('creating KV...');
-    const kv = await fetch(`${API_BASE}/accounts/${accountId}/storage/kv/namespaces`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `${worker_name}-kv` }) }).then(r => r.json()) as { result?: { id: string }; errors?: Array<{ message: string }> };
-    if (!kv.result?.id) return await fail(kv.errors?.[0]?.message ?? 'KV failed');
-    await appendLog(`✓ KV: ${kv.result.id.slice(0,8)}...`);
-    await env.DB.prepare('UPDATE deployments SET kv_namespace_id = ? WHERE id = ?').bind(kv.result.id, deployment_id).run();
+    let kvId = '';
+    const kvTitle = `${worker_name}-kv`;
+    // First try to find existing KV by listing all pages
+    let page = 1;
+    let found = false;
+    while (!found && page <= 5) {
+      const existingList = await fetch(`${API_BASE}/accounts/${accountId}/storage/kv/namespaces?per_page=100&page=${page}`, { headers }).then(r => r.json()) as { result?: Array<{ id: string; title: string }>; result_info?: { has_more?: boolean } };
+      const match = existingList.result?.find((n: { id: string; title: string }) => n.title === kvTitle);
+      if (match) { kvId = match.id; found = true; }
+      if (!existingList.result_info?.has_more) break;
+      page++;
+    }
+    if (found) {
+      await appendLog(`✓ reused KV: ${kvId.slice(0,8)}...`);
+    } else {
+      // Create new KV
+      const kv = await fetch(`${API_BASE}/accounts/${accountId}/storage/kv/namespaces`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: kvTitle }) }).then(r => r.json()) as { result?: { id: string }; errors?: Array<{ message: string }> };
+      if (kv.result?.id) { kvId = kv.result.id; }
+      else return await fail(kv.errors?.[0]?.message ?? 'KV failed');
+    }
+    await appendLog(`✓ KV: ${kvId.slice(0,8)}...`);
+    await env.DB.prepare('UPDATE deployments SET kv_namespace_id = ? WHERE id = ?').bind(kvId, deployment_id).run();
 
-    await fetch(`${API_BASE}/accounts/${accountId}/storage/kv/namespaces/${kv.result.id}/values/config.json`, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ PROXYIP: proxyip || '', UUID: uuid, ADMIN: admin_password || 'admin123' }) });
+    await fetch(`${API_BASE}/accounts/${accountId}/storage/kv/namespaces/${kvId}/values/config.json`, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ PROXYIP: proxyip || '', UUID: uuid, ADMIN: admin_password || 'admin123' }) });
 
     await appendLog('deploying...');
-    const d = await fetch(`${API_BASE}/accounts/${accountId}/workers/scripts/${worker_name}`, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/javascript+module' }, body: code }).then(r => r.json()) as { success?: boolean; errors?: Array<{ message: string }> };
+    // Upload as module worker using multipart form
+    const metadata = JSON.stringify({ main_module: 'worker.js', bindings: [{ type: 'kv_namespace', name: 'KV', namespace_id: kvId }], compatibility_date: '2025-01-01', compatibility_flags: ['nodejs_compat'] });
+    const form = new FormData();
+    form.append('metadata', new Blob([metadata], { type: 'application/json' }));
+    form.append('worker.js', new Blob([code], { type: 'application/javascript+module' }), 'worker.js');
+    const d = await fetch(`${API_BASE}/accounts/${accountId}/workers/scripts/${worker_name}`, { method: 'PUT', headers: { Authorization: `Bearer ${cf_token}` }, body: form }).then(r => r.json()) as { success?: boolean; errors?: Array<{ message: string }> };
     if (!d.success) return await fail(d.errors?.[0]?.message ?? 'deploy failed');
-
-    await fetch(`${API_BASE}/accounts/${accountId}/workers/scripts/${worker_name}/bindings`, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ kv_namespaces: [{ binding: 'KV', id: kv.result.id }] }) });
 
     const workerUrl = `https://${worker_name}.${accountId.slice(0,8)}.workers.dev`;
     await appendLog(`✓ deployed: ${workerUrl}`);
