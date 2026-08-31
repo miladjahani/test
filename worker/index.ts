@@ -22,9 +22,10 @@ async function hashPassword(password: string): Promise<string> {
 async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = stored.split('$');
   if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
-  const salt = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
+  const iterations = parseInt(parts[1]);
+  const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: parseInt(parts[1]), hash: 'SHA-256' }, key, 256);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, key, 256);
   return btoa(String.fromCharCode(...new Uint8Array(bits))) === parts[3];
 }
 
