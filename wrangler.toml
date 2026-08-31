@@ -3,8 +3,8 @@ main = "worker/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 Database binding (uncomment after creating D1)
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "proxy-panel"
-# database_id = "YOUR_D1_DATABASE_ID"
+# D1 Database - auto-configured by GitHub Actions
+[[d1_databases]]
+binding = "DB"
+database_name = "proxy-panel"
+database_id = "YOUR_D1_DATABASE_ID"
