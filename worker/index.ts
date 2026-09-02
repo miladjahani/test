@@ -93,13 +93,36 @@ async function runDeployment(env: Env, job: { deployment_id: string; worker_name
     await fetch(`${API_BASE}/accounts/${accountId}/storage/kv/namespaces/${kvId}/values/config.json`, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ PROXYIP: proxyip || '', UUID: uuid, ADMIN: admin_password || 'admin123' }) });
 
     await appendLog('deploying...');
-    // Upload as module worker using multipart form
-    const metadata = JSON.stringify({ main_module: 'worker.js', bindings: [{ type: 'kv_namespace', name: 'KV', namespace_id: kvId }], compatibility_date: '2025-01-01', compatibility_flags: ['nodejs_compat'] });
-    const form = new FormData();
-    form.append('metadata', new Blob([metadata], { type: 'application/json' }));
-    form.append('worker.js', new Blob([code], { type: 'application/javascript+module' }), 'worker.js');
-    const d = await fetch(`${API_BASE}/accounts/${accountId}/workers/scripts/${worker_name}`, { method: 'PUT', headers: { Authorization: `Bearer ${cf_token}` }, body: form }).then(r => r.json()) as { success?: boolean; errors?: Array<{ message: string }> };
+    // Build multipart body manually for module worker upload
+    const boundary = '----FormBoundary' + crypto.randomUUID().slice(0, 16);
+    const metadata = JSON.stringify({ main_module: 'worker.js', bindings: [{ type: 'kv_namespace', name: 'KV', namespace_id: kvId }], vars: { ADMIN: admin_password || 'admin123' }, compatibility_date: '2025-01-01', compatibility_flags: ['nodejs_compat'] });
+    const encoder = new TextEncoder();
+    const parts: Uint8Array[] = [];
+    // metadata part
+    parts.push(encoder.encode(`--${boundary}\r\nContent-Disposition: form-data; name="metadata"\r\nContent-Type: application/json\r\n\r\n${metadata}\r\n`));
+    // worker.js part
+    parts.push(encoder.encode(`--${boundary}\r\nContent-Disposition: form-data; name="worker.js"; filename="worker.js"\r\nContent-Type: application/javascript+module\r\n\r\n`));
+    parts.push(encoder.encode(code));
+    parts.push(encoder.encode(`\r\n--${boundary}--\r\n`));
+    const totalLen = parts.reduce((s, p) => s + p.length, 0);
+    const body = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const p of parts) { body.set(p, offset); offset += p.length; }
+    const d = await fetch(`${API_BASE}/accounts/${accountId}/workers/scripts/${worker_name}`, { method: 'PUT', headers: { Authorization: `Bearer ${cf_token}`, 'Content-Type': `multipart/form-data; boundary=${boundary}` }, body }).then(r => r.json()) as { success?: boolean; errors?: Array<{ message: string }> };
     if (!d.success) return await fail(d.errors?.[0]?.message ?? 'deploy failed');
+    await appendLog("✓ script uploaded");
+
+    // Enable workers.dev subdomain
+    try {
+      const sb = "----SB" + crypto.randomUUID().slice(0,8);
+      const sBody = JSON.stringify({ workers_dev_enabled: true });
+      const sParts = [encoder.encode("--" + sb + "\r\nContent-Disposition: form-data; name=\"settings\"\r\nContent-Type: application/json\r\n\r\n" + sBody + "\r\n--" + sb + "--\r\n")];
+      const sTotal = sParts.reduce((a, p) => a + p.length, 0);
+      const sForm = new Uint8Array(sTotal); let so = 0; for (const p of sParts) { sForm.set(p, so); so += p.length; }
+      await fetch(API_BASE + "/accounts/" + accountId + "/workers/scripts/" + worker_name + "/settings", { method: "PATCH", headers: { Authorization: "Bearer " + cf_token, "Content-Type": "multipart/form-data; boundary=" + sb }, body: sForm });
+      await appendLog("✓ workers.dev enabled");
+    } catch { await appendLog("! workers.dev enable skipped"); }
+
 
     const workerUrl = `https://${worker_name}.${accountId.slice(0,8)}.workers.dev`;
     await appendLog(`✓ deployed: ${workerUrl}`);
